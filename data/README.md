@@ -1,8 +1,8 @@
 # WraithLog data
 
-- `message.json`: pesan yang berhasil diterima dan disimpan.
-- `deleted.json`: pesan yang terdeteksi dihapus melalui event revoke.
-- `settings.json`: batas jumlah record.
-- `auth/`: session credentials Baileys setelah pairing. Jangan dibagikan.
+- `message.json`: messages received and stored by WraithLog.
+- `deleted.json`: messages detected as deleted through supported revoke events.
+- `settings.json`: storage limits.
+- `auth/`: Baileys authentication session files created after pairing. Never share this directory.
 
-Isi `auth/` dibuat otomatis saat pairing berhasil. File JSON ini berisi data lokal dan dapat memuat informasi privat.
+The JSON files contain local runtime data and may include private messages. Keep them out of public repositories when they contain real account data.

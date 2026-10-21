@@ -1,13 +1,13 @@
 # WraithLog
 
-WraithLog adalah aplikasi terminal WhatsApp Web-compatible dari **NullKat Development**. Semua logika utama—CLI, pairing code, koneksi Baileys, storage JSON, pencarian, dukungan grup, dan deteksi deletion—berada di satu file: `index.js`.
+WraithLog is a terminal-based WhatsApp Web-compatible message monitor by **NullKat Development**. The complete application logic—CLI, pairing-code authentication, Baileys connection, JSON storage, search, group support, and deletion monitoring—is contained in `index.js`.
 
-## Struktur file
+## Project structure
 
 ```text
 WraithLog/
-├── index.js          # seluruh aplikasi WraithLog
-├── package.json      # dependency dan script start
+├── index.js          # complete application
+├── package.json      # dependencies and npm scripts
 ├── package-lock.json
 ├── .gitignore
 ├── README.md
@@ -20,11 +20,11 @@ WraithLog/
         └── .gitkeep
 ```
 
-Folder `data/` berada langsung di dalam proyek. File `message.json`, `deleted.json`, dan `settings.json` sudah tersedia sejak awal. Folder `data/auth/` akan diisi otomatis oleh Baileys setelah pairing dan berisi sesi autentikasi; jangan membagikan isinya.
+The `data/` directory is inside the project. `message.json`, `deleted.json`, and `settings.json` are created on first startup. `data/auth/` is populated by Baileys after pairing and contains authentication session data. Never share it.
 
-## Instalasi dan menjalankan
+## Installation and startup
 
-Persyaratan: Node.js 20 atau lebih baru.
+Requirement: Node.js 20 or newer.
 
 ### Termux
 
@@ -36,7 +36,7 @@ npm install
 node index.js
 ```
 
-### Debian/Ubuntu/Linux
+### Debian, Ubuntu, or Linux
 
 ```bash
 sudo apt update
@@ -46,25 +46,25 @@ npm install
 node index.js
 ```
 
-Alternatif melalui script npm:
+You can also use:
 
 ```bash
 npm start
 ```
 
-## Pairing WhatsApp
+## WhatsApp pairing
 
-1. Jalankan `node index.js`.
-2. Pilih menu `3`.
-3. Masukkan nomor akun sendiri dengan kode negara, misalnya `628123456789`.
-4. Salin pairing code yang diberikan WhatsApp.
-5. Di WhatsApp buka **Perangkat tertaut → Tautkan perangkat → Tautkan dengan nomor telepon**.
-6. Masukkan kode tersebut.
-7. Monitoring mulai setelah `[CONNECTED]` muncul.
+1. Run `node index.js`.
+2. Select menu option `3`.
+3. Enter your own WhatsApp number with the country code, for example `628123456789`.
+4. Copy the pairing code returned by WhatsApp.
+5. In WhatsApp, open **Linked devices → Link a device → Link with phone number**.
+6. Enter the code.
+7. Monitoring begins only after `[CONNECTED]` appears.
 
-WraithLog tidak membuat, mencetak, atau menggunakan QR code. Sesi autentikasi disimpan terpisah di `~/.wraithlog/auth/`.
+WraithLog never creates, prints, or uses a QR code. Authentication sessions are stored separately in `data/auth/`.
 
-## Menu
+## Menu and live dashboards
 
 ```text
 [1] Latest Messages
@@ -74,10 +74,21 @@ WraithLog tidak membuat, mencetak, atau menggunakan QR code. Sesi autentikasi di
 [5] Exit
 ```
 
-Menu `1` dan `2` adalah dashboard live. Saat menu terbuka, pesan baru atau deletion record baru langsung dirender ulang tanpa perlu mengetik `refresh`, dan seluruh record tersimpan ditampilkan, bukan hanya beberapa item terakhir. Pesan baru ditambahkan di bagian bawah; pesan yang sudah terhapus tetap terlihat di menu `1` dengan warna merah, dan juga tersedia khusus di menu `2`. Gunakan `search`, `refresh`, `help`, `out`, atau `exit`; `out` kembali ke menu utama. Pesan grup menyimpan nama grup, group JID, dan nomor participant aktual bila WhatsApp/Baileys menyediakannya. Deletion record dideduplikasi berdasarkan chat JID dan message ID. Notifikasi deletion tidak dicetak saat pengguna berada di menu lain; record akan terlihat saat menu `2` dibuka.
+Menus `1` and `2` are live dashboards. New messages and deletion records are redrawn automatically while the dashboard is open. All stored records are shown, and newer messages are appended at the bottom. Deleted messages remain visible in menu `1` in red and are also available in menu `2`.
 
-## Batasan penting
+Supported commands are `search`, `refresh`, `help`, `out`, and `exit`. The `out` command returns to the main menu. Group records include the group name, group JID, and the participant phone number when WhatsApp/Baileys provides it. Deletion records are deduplicated by chat JID and message ID. Deletion notifications are silent outside menu `2`.
 
-WraithLog hanya dapat menyimpan isi pesan yang sudah diterima dan disimpan sebelum event revoke diterima. Pesan yang dihapus sebelum aplikasi menerimanya tidak dapat dipulihkan. Ketersediaan participant, nama grup, reply context, timestamp, dan metadata bergantung pada event yang dikirim WhatsApp/Baileys. Pengujian live memerlukan akun dan grup yang dimiliki atau diotorisasi pengguna.
+## Data files
 
-Baileys adalah library tidak resmi dan tidak berafiliasi dengan WhatsApp. Gunakan hanya pada akun dan percakapan yang Anda miliki atau berwenang untuk monitor.
+- `data/message.json`: received message records.
+- `data/deleted.json`: deletion records detected through supported revoke events.
+- `data/settings.json`: storage limits.
+- `data/auth/`: Baileys authentication session files.
+
+The default limits are 5,000 message records and 5,000 deletion records. Do not publish or share the contents of `data/auth/`, `message.json`, or `deleted.json` if they contain private data.
+
+## Important limitations
+
+WraithLog can only preserve original content when the message was received and stored before its revoke event arrived. A message deleted before the application received it cannot be recovered. Participant numbers, group names, reply context, timestamps, and other metadata depend on the event data provided by WhatsApp and Baileys. Live testing requires an account and groups owned or authorized by the operator.
+
+Baileys is an unofficial library and is not affiliated with WhatsApp. Use WraithLog only with accounts and conversations you own or are authorized to monitor.

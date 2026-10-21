@@ -26,12 +26,12 @@ const LOGO = `${C.brightRed}${C.bold}
   ╚██╔╝  ██╔══██╗██╔══██║██║   ██║   ██╔══██║██║     ██║   ██║██║   ██║
    ██║   ██║  ██║██║  ██║██║   ██║   ██║  ██║███████╗╚██████╔╝╚██████╔╝
    ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚══════╝ ╚═════╝  ╚═════╝
-                 W R A I T H L O G
+                 WRAITHLOG
 ${C.reset}`;
 
 function normalizePhone(input = '') {
   const digits = String(input).replace(/[^0-9]/g, '');
-  if (digits.length < 7 || digits.length > 15) throw new Error('Nomor harus 7–15 digit dan memakai kode negara.');
+  if (digits.length < 7 || digits.length > 15) throw new Error('Phone number must contain 7–15 digits, including the country code.');
   return digits;
 }
 function jidIdentity(jid = '') { return jid.split(':')[0].split('@')[0] || jid || 'unknown'; }
@@ -60,7 +60,7 @@ function replyOf(message) {
 }
 function formatRecord(record) {
   const lines = [`[${record.deleted ? 'DELETED' : 'MESSAGE'}] ${record.sentAt || 'unknown'}`, `Sender No. : ${record.senderIdentity || 'unknown'}`, `Chat Type  : ${(record.chatType || 'unknown').toUpperCase()}`];
-  if (record.chatType === 'group' || record.groupName || record.groupJid) lines.push(`Group      : ${record.groupName || 'Nama grup belum tersedia'} (${record.groupJid || 'JID grup tidak tersedia'})`);
+  if (record.chatType === 'group' || record.groupName || record.groupJid) lines.push(`Group      : ${record.groupName || 'Group name unavailable'} (${record.groupJid || 'Group JID unavailable'})`);
   lines.push(`Message ID: ${record.messageId || 'unknown'}`, `Message   : ${record.content ?? '[content unavailable]'}`);
   if (record.replyContext?.text || record.replyContext?.stanzaId) lines.push(`Reply     : ${record.replyContext.text || '[reply content unavailable]'}${record.replyContext.stanzaId ? ` [${record.replyContext.stanzaId}]` : ''}`);
   if (record.deleted) lines.push(`Detected  : ${record.deletedAt || 'unknown'}`);
@@ -134,13 +134,13 @@ class WhatsApp extends EventEmitter {
     for (const [event, handler] of [['creds.update', onCreds], ['messages.upsert', onUpsert], ['messages.update', onUpdate], ['connection.update', onConnection], ['groups.update', onGroups]]) this.sock.ev.on(event, handler), this.listeners.push([event, handler]);
     if (!state.creds.registered && this.phone) {
       await wait(1200);
-      try { this.emit('pairingCode', await this.sock.requestPairingCode(this.phone)); } catch (error) { this.emit('pairingError', new Error(`Pairing code gagal: ${error.message}`)); }
+      try { this.emit('pairingCode', await this.sock.requestPairingCode(this.phone)); } catch (error) { this.emit('pairingError', new Error(`Pairing code request failed: ${error.message}`)); }
     }
   }
   waitForConnected(timeoutMs = 120000) {
     if (this.status === 'CONNECTED') return Promise.resolve();
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => { cleanup(); reject(new Error('Pairing belum selesai dalam 120 detik.')); }, timeoutMs);
+      const timer = setTimeout(() => { cleanup(); reject(new Error('Pairing did not complete within 120 seconds.')); }, timeoutMs);
       const connected = () => { cleanup(); resolve(); };
       const failed = error => { cleanup(); reject(error); };
       const cleanup = () => { clearTimeout(timer); this.off('connected', connected); this.off('pairingError', failed); };
@@ -186,31 +186,31 @@ class WraithLog {
   constructor() { this.rl = null; this.storage = null; this.whatsapp = null; this.stopping = false; this.activeMode = 0; }
   async init() {
     console.log(LOGO, `${C.gray}${ORG} // secure local monitor${C.reset}\n`);
-    const steps = [[1, 'Memeriksa runtime Node.js'], [2, 'Memeriksa storage lokal'], [5, 'Memuat konfigurasi'], [9, 'Memulihkan message processor'], [17, 'Memeriksa batas arsip'], [31, 'Menyiapkan connection manager'], [48, 'Memastikan direktori sesi terpisah'], [67, 'Memasang event pipeline'], [83, 'Menyiapkan terminal interface'], [96, 'Finalizing'], [100, 'Initialization complete']];
+    const steps = [[1, 'Checking Node.js runtime'], [2, 'Checking local storage'], [5, 'Loading configuration'], [9, 'Restoring message processor'], [17, 'Checking archive limits'], [31, 'Preparing connection manager'], [48, 'Securing separate session directory'], [67, 'Installing event pipeline'], [83, 'Preparing terminal interface'], [96, 'Finalizing'], [100, 'Initialization complete']];
     for (const [percent, message] of steps) { if (percent === 2) this.storage = await new Storage().init(); if (percent === 31) this.whatsapp = new WhatsApp(this.storage); console.log(`${C.red}[${String(percent).padStart(3)}%]${C.reset} ${message}`); await wait(35); }
     console.log(`${C.gray}Data: ${DATA_DIR}${C.reset}\n`); this.events();
     this.rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true }); this.rl.on('SIGINT', () => this.stop()); process.on('SIGINT', () => this.stop()); process.on('SIGTERM', () => this.stop());
     await this.whatsapp.start();
   }
   events() {
-    this.whatsapp.on('pairingCode', code => console.log(`\n${red('[PAIRING CODE]')} ${C.bold}${C.white}${code}${C.reset}\n${C.gray}WhatsApp > Perangkat tertaut > Tautkan perangkat > Tautkan dengan nomor telepon.${C.reset}\n`));
-    this.whatsapp.on('connected', () => console.log(`\n${C.white}[CONNECTED] WhatsApp linked-device aktif.${C.reset}\n`));
-    this.whatsapp.on('disconnected', code => console.log(`\n${C.gray}[DISCONNECTED] Koneksi terputus${code ? ` (${code})` : ''}; mencoba reconnect.${C.reset}\n`));
-    this.whatsapp.on('qrSuppressed', () => console.log(`${C.gray}[auth] QR diabaikan; WraithLog hanya memakai pairing code.${C.reset}`));
+    this.whatsapp.on('pairingCode', code => console.log(`\n${red('[PAIRING CODE]')} ${C.bold}${C.white}${code}${C.reset}\n${C.gray}WhatsApp > Linked devices > Link a device > Link with phone number.${C.reset}\n`));
+    this.whatsapp.on('connected', () => console.log(`\n${C.white}[CONNECTED] WhatsApp linked device is active.${C.reset}\n`));
+    this.whatsapp.on('disconnected', code => console.log(`\n${C.gray}[DISCONNECTED] Connection lost${code ? ` (${code})` : ''}; retrying connection.${C.reset}\n`));
+    this.whatsapp.on('qrSuppressed', () => console.log(`${C.gray}[auth] QR event ignored; WraithLog uses pairing codes only.${C.reset}`));
     this.whatsapp.on('error', error => console.log(`${red('[ERROR]')} ${error.message}`));
     this.whatsapp.on('message', () => { if (this.activeMode === 1) this.renderDashboard(false); });
     this.whatsapp.on('deletion', () => { if (this.activeMode === 2) this.renderDashboard(true); });
   }
   ask(prompt) { return new Promise(resolve => { if (this.rl?.closed) return resolve('exit'); this.rl.question(prompt, answer => resolve(answer.trim())); }); }
-  print(records, empty = 'Tidak ada data tersimpan.') { if (!records.length) return console.log(`${C.gray}${empty}${C.reset}`); console.log(`${C.gray}Menampilkan semua ${records.length} record tersimpan. Pesan terbaru berada di bagian bawah.${C.reset}`); for (const record of records) console.log(record.deleted ? red(formatRecord(record)) : formatRecord(record)); }
-  renderDashboard(deletedOnly) { if (this.stopping) return; process.stdout.write('\x1b[2J\x1b[H'); console.log(LOGO); console.log(`${C.red}${C.bold}${deletedOnly ? 'DELETED MESSAGES // LIVE' : 'LATEST MESSAGES // LIVE'}${C.reset}`); console.log(`${C.gray}Dashboard otomatis diperbarui. Pesan baru ditambahkan di bawah. Ketik search, help, atau out.${C.reset}\n`); this.print(deletedOnly ? this.storage.deleted : this.storage.messages); }
+  print(records, empty = 'No stored data.') { if (!records.length) return console.log(`${C.gray}${empty}${C.reset}`); console.log(`${C.gray}Showing all ${records.length} stored records. Newest messages appear at the bottom.${C.reset}`); for (const record of records) console.log(record.deleted ? red(formatRecord(record)) : formatRecord(record)); }
+  renderDashboard(deletedOnly) { if (this.stopping) return; process.stdout.write('\x1b[2J\x1b[H'); console.log(LOGO); console.log(`${C.red}${C.bold}${deletedOnly ? 'DELETED MESSAGES // LIVE' : 'LATEST MESSAGES // LIVE'}${C.reset}`); console.log(`${C.gray}Dashboard updates automatically. New messages are appended at the bottom. Type search, help, or out.${C.reset}\n`); this.print(deletedOnly ? this.storage.deleted : this.storage.messages); }
   async list(deletedOnly) {
     this.activeMode = deletedOnly ? 2 : 1; this.renderDashboard(deletedOnly);
-    while (!this.stopping && this.activeMode === (deletedOnly ? 2 : 1)) { const command = (await this.ask(`${C.red}command > ${C.reset}`)).toLowerCase(); if (command === 'back' || command === 'out') { this.activeMode = 0; return; } if (command === 'exit') return this.stop(); if (command === 'refresh') { this.renderDashboard(deletedOnly); continue; } if (command === 'help') { console.log('search = filter berdasarkan nomor | refresh = render ulang | out = kembali ke menu utama | exit = keluar'); continue; } if (command === 'search') { try { const phone = normalizePhone(await this.ask('phone number > ')); const results = deletedOnly ? this.storage.search(phone, true) : this.storage.messages.filter(item => String(item.senderIdentity || '').replace(/[^0-9]/g, '').endsWith(phone)); this.print(results, 'Tidak ada hasil.'); } catch (error) { console.log(red(error.message)); } } else console.log(`${C.gray}Perintah tidak dikenal. Ketik help atau out.${C.reset}`); }
+    while (!this.stopping && this.activeMode === (deletedOnly ? 2 : 1)) { const command = (await this.ask(`${C.red}command > ${C.reset}`)).toLowerCase(); if (command === 'back' || command === 'out') { this.activeMode = 0; return; } if (command === 'exit') return this.stop(); if (command === 'refresh') { this.renderDashboard(deletedOnly); continue; } if (command === 'help') { console.log('search = filter by phone number | refresh = redraw | out = return to main menu | exit = quit'); continue; } if (command === 'search') { try { const phone = normalizePhone(await this.ask('phone number > ')); const results = deletedOnly ? this.storage.search(phone, true) : this.storage.messages.filter(item => String(item.senderIdentity || '').replace(/[^0-9]/g, '').endsWith(phone)); this.print(results, 'No results.'); } catch (error) { console.log(red(error.message)); } } else console.log(`${C.gray}Unknown command. Type help or out.${C.reset}`); }
   }
-  async link() { if (this.whatsapp.status === 'CONNECTED') return console.log('Sudah terhubung.'); try { const phone = normalizePhone(await this.ask('Nomor WhatsApp sendiri dengan kode negara > ')); console.log(`${C.gray}Menunggu pairing code dan konfirmasi koneksi. Menu akan tetap tertahan sampai pairing selesai.${C.reset}`); await this.whatsapp.start(phone); await this.whatsapp.waitForConnected(); } catch (error) { console.log(red(error.message)); } }
+  async link() { if (this.whatsapp.status === 'CONNECTED') return console.log('Already connected.'); try { const phone = normalizePhone(await this.ask('Your WhatsApp number with country code > ')); console.log(`${C.gray}Waiting for the pairing code and connection confirmation. The menu will remain locked until pairing is complete.${C.reset}`); await this.whatsapp.start(phone); await this.whatsapp.waitForConnected(); } catch (error) { console.log(red(error.message)); } }
   credits() { console.log(`\nOrganization: ${ORG}\nDeveloper: undefined\nCo-developer: undefined\n\n${red('WARNING!')}\n${red('Use only with accounts and conversations you own or are authorized to monitor. Protect private messages, authentication sessions, and stored data. Message-deletion detection depends on supported events and previously stored messages.')}\n`); }
-  async run() { await this.init(); while (!this.stopping) { console.log(`${C.red}${C.bold}WraithLog Main Menu${C.reset}\n[1] Latest Messages\n[2] Deleted Messages\n[3] Link WhatsApp\n[4] Credits\n[5] Exit`); const choice = await this.ask(`${C.red}select > ${C.reset}`); if (choice === '1') await this.list(false); else if (choice === '2') await this.list(true); else if (choice === '3') await this.link(); else if (choice === '4') this.credits(); else if (choice === '5' || choice === 'exit') await this.stop(); else console.log(red('Input tidak valid. Pilih 1–5.')); } }
+  async run() { await this.init(); while (!this.stopping) { console.log(`${C.red}${C.bold}WraithLog Main Menu${C.reset}\n[1] Latest Messages\n[2] Deleted Messages\n[3] Link WhatsApp\n[4] Credits\n[5] Exit`); const choice = await this.ask(`${C.red}select > ${C.reset}`); if (choice === '1') await this.list(false); else if (choice === '2') await this.list(true); else if (choice === '3') await this.link(); else if (choice === '4') this.credits(); else if (choice === '5' || choice === 'exit') await this.stop(); else console.log(red('Invalid input. Choose 1–5.')); } }
   async stop() { if (this.stopping) return; this.stopping = true; console.log(`\n${C.gray}Stopping monitoring and flushing storage...${C.reset}`); await this.whatsapp?.stop(); await this.storage?.writeQueue; this.rl?.close(); console.log(`${C.white}WraithLog stopped safely.${C.reset}`); }
 }
 
