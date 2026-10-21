@@ -1,0 +1,19 @@
+{
+  "name": "wraithlog",
+  "version": "1.0.0",
+  "description": "WraithLog WhatsApp terminal monitor",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --check index.js"
+  },
+  "engines": { "node": ">=20" },
+  "keywords": ["whatsapp", "pairing-code", "terminal"],
+  "author": "NullKat Development",
+  "license": "MIT",
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "9.7.0"
+  }
+}
